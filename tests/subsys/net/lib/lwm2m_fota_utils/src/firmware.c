@@ -234,20 +234,22 @@ static void fota_cb_simulate_event(enum fota_download_evt_id id)
 
 static int fota_download_util_download_start_stub(const char *download_uri,
 						    enum dfu_target_image_type dfu_target_type,
-						    int sec_tag,
+						    int img_num, int sec_tag,
 						    fota_download_callback_t client_callback)
 {
 	firmware_fota_download_cb = client_callback;
 	return fota_download_ret_val;
 }
 
-int fota_download_util_image_schedule_stub(enum dfu_target_image_type dfu_target_type)
+int fota_download_util_image_schedule_stub(enum dfu_target_image_type dfu_target_type,
+					   int img_num)
 {
 	boot_scheduled = true;
 	return 0;
 }
 
-static int fota_download_util_image_reset_stub(enum dfu_target_image_type dfu_target_type)
+static int fota_download_util_image_reset_stub(enum dfu_target_image_type dfu_target_type,
+					       int img_num)
 {
 	target_reset_done = true;
 	target_offset = 0;

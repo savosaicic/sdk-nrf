@@ -437,7 +437,7 @@ static int firmware_target_reset(uint16_t obj_inst_id)
 		return 0;
 	}
 
-	return fota_download_util_image_reset(dfu_image_type);
+	return fota_download_util_image_reset(dfu_image_type, 0);
 }
 
 static int set_firmware_update_type(int dfu_image_type)
@@ -557,7 +557,7 @@ static int firmware_instance_schedule(uint16_t obj_inst_id)
 		return -EACCES;
 	}
 
-	ret = fota_download_util_image_schedule(dfu_image_type);
+	ret = fota_download_util_image_schedule(dfu_image_type, 0);
 
 	if (ret) {
 		LOG_ERR("DFU shedule fail err:%d", ret);
@@ -976,7 +976,7 @@ static int init_start_download(char *uri, uint16_t obj_instance)
 	}
 	sec_tag = CONFIG_LWM2M_CLIENT_UTILS_DOWNLOADER_SEC_TAG;
 
-	return fota_download_util_download_start(uri, type, sec_tag, fota_download_callback);
+	return fota_download_util_download_start(uri, type, 0, sec_tag, fota_download_callback);
 }
 
 static void lwm2m_start_download_image(uint8_t *data, uint16_t obj_instance)

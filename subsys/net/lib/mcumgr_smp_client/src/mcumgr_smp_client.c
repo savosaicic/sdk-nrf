@@ -36,7 +36,7 @@ int mcumgr_smp_client_init(dfu_target_reset_cb_t cb)
 int mcumgr_smp_client_download_start(const char *download_uri, int sec_tag,
 				     fota_download_callback_t client_callback)
 {
-	return fota_download_util_download_start(download_uri, DFU_TARGET_IMAGE_TYPE_SMP, sec_tag,
+	return fota_download_util_download_start(download_uri, DFU_TARGET_IMAGE_TYPE_SMP, 0, sec_tag,
 						 client_callback);
 }
 
@@ -47,7 +47,7 @@ int mcumgr_smp_client_download_cancel(void)
 
 int mcumgr_smp_client_update(void)
 {
-	return fota_download_util_image_schedule(DFU_TARGET_IMAGE_TYPE_SMP);
+	return fota_download_util_image_schedule(DFU_TARGET_IMAGE_TYPE_SMP, 0);
 }
 
 int mcumgr_smp_client_read_list(struct mcumgr_image_state *image_list)

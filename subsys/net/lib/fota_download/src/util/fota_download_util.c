@@ -57,6 +57,7 @@ static char fota_host[CONFIG_FOTA_DOWNLOAD_HOST_NAME_LENGTH];
 static int fota_sec_tag = SEC_TAG_TLS_INVALID;
 static bool download_active;
 static enum dfu_target_image_type active_dfu_type;
+static int active_img_num;
 
 int fota_download_parse_dual_resource_locator(char *const file, bool s0_active,
 					      const char **selected_path)
@@ -181,9 +182,17 @@ static int download_url_parse(const char *uri)
 static void start_fota_download(struct k_work *work)
 {
 	int ret;
+	int sec_tag_list[1] = { fota_sec_tag };
+	const struct fota_download_params params = {
+		.host = fota_host,
+		.file = fota_path,
+		.sec_tag_list = sec_tag_list,
+		.sec_tag_count = fota_sec_tag == SEC_TAG_TLS_INVALID ? 0 : 1,
+		.expected_type = active_dfu_type,
+		.img_num = active_img_num,
+	};
 
-	ret = fota_download_start_with_image_type(fota_host, fota_path, fota_sec_tag, 0, 0,
-						  active_dfu_type);
+	ret = fota_download_start_params(&params);
 	if (ret) {
 		struct fota_download_evt evt = {
 			.id = FOTA_DOWNLOAD_EVT_ERROR
@@ -230,13 +239,17 @@ int fota_download_util_stream_init(void)
 }
 
 int fota_download_util_download_start(const char *download_uri,
-				      enum dfu_target_image_type dfu_target_type, int sec_tag,
-				      fota_download_callback_t client_callback)
+				      enum dfu_target_image_type dfu_target_type, int img_num,
+				      int sec_tag, fota_download_callback_t client_callback)
 {
 	int ret;
 
 	if (download_active) {
 		return -EBUSY;
+	}
+
+	if (img_num < 0) {
+		return -EINVAL;
 	}
 
 	ret = download_url_parse(download_uri);
@@ -247,6 +260,7 @@ int fota_download_util_download_start(const char *download_uri,
 	LOG_INF("Download Path %s host %s", fota_path, fota_host);
 
 	active_dfu_type = dfu_target_type;
+	active_img_num = img_num;
 	fota_sec_tag = sec_tag;
 
 	/* Register Callback */
@@ -315,35 +329,40 @@ int fota_download_util_dfu_target_init(enum dfu_target_image_type dfu_target_typ
 
 }
 
-static int fota_dfu_target_pre_init(enum dfu_target_image_type dfu_target_type)
+static int fota_dfu_target_pre_init(enum dfu_target_image_type dfu_target_type, int img_num)
 {
 	int ret = 0;
+
+	if (img_num < 0) {
+		return -EINVAL;
+	}
 
 	ret = fota_download_util_dfu_target_init(dfu_target_type);
 	if (ret) {
 		return ret;
 	}
 	/* Init DFU target ready for usage */
-	return dfu_target_init(dfu_target_type, 0, 0, dfu_target_cb);
+	return dfu_target_init(dfu_target_type, img_num, 0, dfu_target_cb);
 }
 
-static int firmware_update_slot_num_get(enum dfu_target_image_type dfu_image_type)
+static int firmware_update_slot_num_get(enum dfu_target_image_type dfu_image_type, int img_num)
 {
 	int slot_num;
 
 	switch (dfu_image_type) {
 	case DFU_TARGET_IMAGE_TYPE_SMP:
+		/* SMP schedule acts on the remote secondary slot, not on an image index. */
 		slot_num = 1;
 		break;
 	default:
-		slot_num = 0;
+		slot_num = img_num;
 		break;
 	}
 
 	return slot_num;
 }
 
-int fota_download_util_image_schedule(enum dfu_target_image_type dfu_target_type)
+int fota_download_util_image_schedule(enum dfu_target_image_type dfu_target_type, int img_num)
 {
 	int ret, slot_num;
 
@@ -352,20 +371,20 @@ int fota_download_util_image_schedule(enum dfu_target_image_type dfu_target_type
 		return 0;
 	}
 
-	ret = fota_dfu_target_pre_init(dfu_target_type);
+	ret = fota_dfu_target_pre_init(dfu_target_type, img_num);
 	if (ret) {
 		return ret;
 	}
-	slot_num = firmware_update_slot_num_get(dfu_target_type);
+	slot_num = firmware_update_slot_num_get(dfu_target_type, img_num);
 
 	return dfu_target_schedule_update(slot_num);
 }
 
-int fota_download_util_image_reset(enum dfu_target_image_type dfu_target_type)
+int fota_download_util_image_reset(enum dfu_target_image_type dfu_target_type, int img_num)
 {
 	int ret;
 
-	ret = fota_dfu_target_pre_init(dfu_target_type);
+	ret = fota_dfu_target_pre_init(dfu_target_type, img_num);
 	if (ret) {
 		return ret;
 	}
