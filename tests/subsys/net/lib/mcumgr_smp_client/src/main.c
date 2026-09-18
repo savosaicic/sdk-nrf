@@ -239,7 +239,7 @@ ZTEST(mcumgr_smp_client_test, test_erase_and_confirm)
 	zassert_equal(res_buf.image_list[0].flags.confirmed, true, "Image read list fail");
 	/* Test earse outside by fota_download_util_image_reset() */
 	dfu_target_done_success = true;
-	rc = fota_download_util_image_reset(DFU_TARGET_IMAGE_TYPE_SMP);
+	rc = fota_download_util_image_reset(DFU_TARGET_IMAGE_TYPE_SMP, 0);
 	zassert_equal(rc, 0, "ERASE fail");
 	zassert_equal(dfu_target_done_success, false, "DFU erase not done");
 	/* Test Erase failure by recovery mode enabled */

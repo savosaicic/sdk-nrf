@@ -91,10 +91,10 @@ DEFINE_FAKE_VALUE_FUNC(int, lwm2m_firmware_start_transfer, uint16_t, char *);
 DEFINE_FAKE_VALUE_FUNC(int, fota_download_util_stream_init);
 DEFINE_FAKE_VALUE_FUNC(int, fota_download_util_dfu_target_init, enum dfu_target_image_type);
 DEFINE_FAKE_VALUE_FUNC(int, fota_download_util_download_start, const char *,
-		       enum dfu_target_image_type, int, fota_download_callback_t);
+		       enum dfu_target_image_type, int, int, fota_download_callback_t);
 DEFINE_FAKE_VALUE_FUNC(int, fota_download_util_download_cancel);
-DEFINE_FAKE_VALUE_FUNC(int, fota_download_util_image_schedule, enum dfu_target_image_type);
-DEFINE_FAKE_VALUE_FUNC(int, fota_download_util_image_reset, enum dfu_target_image_type);
+DEFINE_FAKE_VALUE_FUNC(int, fota_download_util_image_schedule, enum dfu_target_image_type, int);
+DEFINE_FAKE_VALUE_FUNC(int, fota_download_util_image_reset, enum dfu_target_image_type, int);
 DEFINE_FAKE_VALUE_FUNC(int, fota_download_util_apply_update, enum dfu_target_image_type);
 
 static int lwm2m_engine_init(void)

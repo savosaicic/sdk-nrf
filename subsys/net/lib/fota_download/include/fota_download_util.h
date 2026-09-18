@@ -65,6 +65,9 @@ int fota_download_util_dfu_target_init(enum dfu_target_image_type dfu_target_typ
  *
  * @param download_uri Download URI string.
  * @param dfu_target_type DFU target type for new image
+ * @param img_num MCUboot image pair index to store the image in and schedule.
+ *                Use 0 for the main application. Ignored for modem image types.
+ *                For DFU_TARGET_IMAGE_TYPE_SMP this is the SMP server image number.
  * @param sec_tag Used security tag for HTTPs or CoAPs
  * @param client_callback Callback for monitoring download state
  *
@@ -72,8 +75,8 @@ int fota_download_util_dfu_target_init(enum dfu_target_image_type dfu_target_typ
  *           Otherwise, a (negative) error code is returned.
  */
 int fota_download_util_download_start(const char *download_uri,
-				      enum dfu_target_image_type dfu_target_type, int sec_tag,
-				      fota_download_callback_t client_callback);
+				      enum dfu_target_image_type dfu_target_type, int img_num,
+				      int sec_tag, fota_download_callback_t client_callback);
 
 /**@brief Cancel active download process.
  *
@@ -85,20 +88,24 @@ int fota_download_util_download_cancel(void);
 /**@brief Schedule image update for next reset.
  *
  * @param dfu_target_type DFU target
+ * @param img_num MCUboot image pair index to schedule. Must match the value the image
+ *                was downloaded with. Ignored for non-MCUboot targets.
  *
  * @retval 0 If successful.
  *           Otherwise, a (negative) error code is returned.
  */
-int fota_download_util_image_schedule(enum dfu_target_image_type dfu_target_type);
+int fota_download_util_image_schedule(enum dfu_target_image_type dfu_target_type, int img_num);
 
 /**@brief Reset DFU target FOTA state
  *
  * @param dfu_target_type DFU target
+ * @param img_num MCUboot image pair index whose download state is reset. Ignored for
+ *                non-MCUboot targets.
  *
  * @retval 0 If successful.
  *           Otherwise, a (negative) error code is returned.
  */
-int fota_download_util_image_reset(enum dfu_target_image_type dfu_target_type);
+int fota_download_util_image_reset(enum dfu_target_image_type dfu_target_type, int img_num);
 
 /**@brief Activate secondary image slot.
  *
