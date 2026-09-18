@@ -67,8 +67,73 @@ function(zephyr_mcuboot_tasks)
     message(WARNING "slot0_partition write block size devicetree parameter is missing, assuming write block size is 4")
   endif()
 
-  dt_nodelabel(slot0_flash NODELABEL "slot0_partition" REQUIRED)
-  dt_reg_size(slot_size PATH "${slot0_flash}" REQUIRED)
+  # Select the MCUboot slot pair this image is signed for.
+  #
+  # The primary slot is derived from the chosen zephyr,code-partition: the
+  # slot<N>_partition node that is the code partition itself or one of its
+  # ancestors (TF-M builds place the code in a nested slot<N>_ns_partition).
+  # This is the slot the image actually executes from, so it is correct
+  # regardless of how the image's devicetree labels the other image pairs.
+  #
+  # When the code partition is not inside any slot<N>_partition node, fall
+  # back to the pair index sysbuild assigned to this image: slot<2N>_partition
+  # with N = CONFIG_MCUBOOT_APPLICATION_IMAGE_NUMBER (0 for the main
+  # application, N for an image registered in the SECONDARY_APP group).
+  if(DEFINED CONFIG_MCUBOOT_APPLICATION_IMAGE_NUMBER AND
+     CONFIG_MCUBOOT_APPLICATION_IMAGE_NUMBER GREATER 0
+  )
+    set(image_pair_index ${CONFIG_MCUBOOT_APPLICATION_IMAGE_NUMBER})
+  else()
+    set(image_pair_index 0)
+  endif()
+  math(EXPR expected_primary_slot_index "${image_pair_index} * 2")
+
+  set(primary_slot_node)
+  set(primary_slot_index)
+  dt_chosen(code_partition PROPERTY "zephyr,code-partition")
+  if(code_partition)
+    # 2 slots per image pair; MCUboot supports at most 8 image pairs.
+    foreach(slot_index RANGE 0 15)
+      dt_nodelabel(slot_node NODELABEL "slot${slot_index}_partition")
+      if(slot_node)
+        string(FIND "${code_partition}" "${slot_node}/" child_pos)
+        if("${code_partition}" STREQUAL "${slot_node}" OR child_pos EQUAL 0)
+          set(primary_slot_node ${slot_node})
+          set(primary_slot_index ${slot_index})
+          break()
+        endif()
+      endif()
+    endforeach()
+    set(slot_node)
+    set(slot_index)
+    set(child_pos)
+  endif()
+
+  if(primary_slot_node)
+    if(NOT primary_slot_index EQUAL expected_primary_slot_index)
+      # Either a misconfigured image or a devicetree view that labels this
+      # image's own slot as slot0_partition (for example because TF-M reads its
+      # layout from slot0_s_partition/slot0_ns_partition). The code partition
+      # is authoritative for the slot the image executes from.
+      message(STATUS "Signing for slot${primary_slot_index}_partition (chosen "
+        "zephyr,code-partition) although CONFIG_MCUBOOT_APPLICATION_IMAGE_NUMBER="
+        "${image_pair_index} maps to slot${expected_primary_slot_index}_partition."
+      )
+    endif()
+  else()
+    set(primary_slot_index ${expected_primary_slot_index})
+    dt_nodelabel(primary_slot_node NODELABEL "slot${primary_slot_index}_partition")
+    if(NOT primary_slot_node)
+      message(FATAL_ERROR "Cannot determine the MCUboot primary slot of this image: "
+        "zephyr,code-partition is not inside a slot<N>_partition node and the devicetree "
+        "has no slot${primary_slot_index}_partition node for image pair index "
+        "${image_pair_index} (CONFIG_MCUBOOT_APPLICATION_IMAGE_NUMBER)."
+      )
+    endif()
+  endif()
+  math(EXPR secondary_slot_index "${primary_slot_index} + 1")
+  set(secondary_slot_label "slot${secondary_slot_index}_partition")
+  dt_reg_size(slot_size PATH "${primary_slot_node}" REQUIRED)
 
   set(imgtool_rom_command)
   if(CONFIG_MCUBOOT_IMGTOOL_OVERWRITE_ONLY)
@@ -80,9 +145,8 @@ function(zephyr_mcuboot_tasks)
     # RAM load requires setting the location of where to load the image to
     dt_chosen(chosen_ram PROPERTY "zephyr,sram")
     dt_reg_addr(chosen_ram_address PATH ${chosen_ram})
-    dt_nodelabel(slot0_partition NODELABEL "slot0_partition" REQUIRED)
-    dt_reg_addr(slot0_partition_address PATH ${slot0_partition})
-    dt_nodelabel(slot1_partition NODELABEL "slot1_partition" REQUIRED)
+    dt_reg_addr(slot0_partition_address PATH ${primary_slot_node})
+    dt_nodelabel(slot1_partition NODELABEL "${secondary_slot_label}" REQUIRED)
     dt_reg_addr(slot1_partition_address PATH ${slot1_partition})
 
     if(CONFIG_MCUBOOT_BOOTLOADER_MODE_RAM_LOAD)
