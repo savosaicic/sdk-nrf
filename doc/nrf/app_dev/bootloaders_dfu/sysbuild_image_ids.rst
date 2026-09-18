@@ -98,6 +98,23 @@ Image numbers are assigned in ascending order based on the following priority:
 | Extra image 2        | 5                      | ``NCS_MCUBOOT_EXTRA_2_IMAGE_NUMBER``         | :kconfig:option:`CONFIG_MCUBOOT_EXTRA_2_IMAGE_NUMBER`      |
 +----------------------+------------------------+----------------------------------------------+------------------------------------------------------------+
 
+Secondary application images
+============================
+
+A project can add further independently updateable application images on the same core by registering them in its :file:`sysbuild.cmake` file:
+
+.. code-block:: cmake
+
+   ExternalZephyrProject_Add(APPLICATION my_second_app SOURCE_DIR <path>)
+   UpdateableImage_Add(APPLICATION my_second_app GROUP "SECONDARY_APP")
+
+Each image registered in the ``SECONDARY_APP`` group is assigned the MCUboot image pair index directly following the main application, and all subsequent image IDs in the table above are shifted accordingly.
+The image sees its own index as its :kconfig:option:`CONFIG_MCUBOOT_APPLICATION_IMAGE_NUMBER`, while all other images keep seeing the main application's index (``0``).
+In the devicetree-based partitioning scheme, an image with index ``N`` uses ``slot<2N>_partition`` as its primary and ``slot<2N+1>_partition`` as its secondary slot.
+The :kconfig:option:`SB_CONFIG_MCUBOOT_UPDATEABLE_IMAGES` value must cover every application-visible image ID: the main application, all secondary application images, and the network core and QSPI XIP images when they are enabled.
+Sysbuild fails at configure time if the assigned image IDs do not fit.
+Each image is signed for the ``slot<N>_partition`` node that contains its chosen ``zephyr,code-partition`` (its own primary slot), falling back to ``slot<2N>_partition`` when the code partition is not inside any slot node.
+
 
 MCUboot update package version
 ******************************
